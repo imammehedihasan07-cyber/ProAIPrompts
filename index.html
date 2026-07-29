@@ -527,8 +527,31 @@
                 <p id="toggleAuthText">Don't have an account? <a href="#" id="toggleAuthMode">Sign Up</a></p>
             </div>
         </div>
-    </div>
+    </div>  
+     <!-- PROMPT DETAILS MODAL -->
+<div class="modal-overlay" id="promptDetailModal">
+    <div class="modal-card glass-card">
+        <button class="modal-close" id="closePromptModalBtn">&times;</button>
+        <div class="modal-header">
+            <span class="badge-platform chatgpt" id="modalPromptCategory">ChatGPT</span>
+            <h2 id="modalPromptTitle">Prompt Title</h2>
+        </div>
+        <p class="prompt-modal-desc" id="modalPromptDesc">Prompt Description</p>
+        
+        <div class="prompt-code-box">
+            <div class="code-box-header">
+                <span>PROMPT TEMPLATE</span>
+                <button class="btn-copy" id="copyPromptBtn">📋 Copy Prompt</button>
+            </div>
+            <pre><code id="modalPromptCode">Act as an expert. Generate a detailed, highly optimized output based on standard AI engineering practices...</code></pre>
+        </div>
 
+        <div class="modal-footer">
+            <span class="price-tag" id="modalPromptPrice">$0.00</span>
+            <button class="btn-primary" id="closePromptModalAction">Close Preview</button>
+        </div>
+    </div>
+</div>
     <!-- Script Import (Module JS) -->
     <script type="module" src="script.js"></script>
 </body>

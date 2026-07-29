@@ -270,19 +270,51 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector('#prompts').scrollIntoView({ behavior: 'smooth' });
         });
     });
-
-    // --------------------------------------------------------------------------
+// --------------------------------------------------------------------------
     // 7. VIEW PROMPT MODAL & COPY TO CLIPBOARD
     // --------------------------------------------------------------------------
+    const promptDetailModal = document.getElementById('promptDetailModal');
+    const closePromptModalBtn = document.getElementById('closePromptModalBtn');
+    const closePromptModalAction = document.getElementById('closePromptModalAction');
+    const copyPromptBtn = document.getElementById('copyPromptBtn');
+
     function attachViewPromptEvents() {
         const viewBtns = document.querySelectorAll('.view-prompt-btn');
         viewBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
+                const card = btn.closest('.prompt-card');
                 const title = btn.getAttribute('data-title');
                 const desc = btn.getAttribute('data-desc');
-                
-                alert(`📌 Prompt Title: ${title}\n\n📝 Description: ${desc}\n\n💡 Full Prompt Code Access: Enabled for registered members!`);
+                const category = card.querySelector('.badge-platform').textContent;
+                const price = card.querySelector('.price-tag').textContent;
+
+                document.getElementById('modalPromptTitle').textContent = title;
+                document.getElementById('modalPromptDesc').textContent = desc;
+                document.getElementById('modalPromptCategory').textContent = category;
+                document.getElementById('modalPromptPrice').textContent = price;
+                document.getElementById('modalPromptCode').textContent = `[PROMPT INSTRUCTIONS]\nAct as a senior expert in ${category}.\nTask: ${desc}\n\nConstraints: Provide step-by-step professional output with zero technical errors.`;
+
+                if(promptDetailModal) promptDetailModal.classList.add('active');
+            });
+        });
+    }
+
+    if(closePromptModalBtn) closePromptModalBtn.addEventListener('click', () => promptDetailModal.classList.remove('active'));
+    if(closePromptModalAction) closePromptModalAction.addEventListener('click', () => promptDetailModal.classList.remove('active'));
+
+    if(promptDetailModal) {
+        promptDetailModal.addEventListener('click', (e) => {
+            if (e.target === promptDetailModal) promptDetailModal.classList.remove('active');
+        });
+    }
+
+    if(copyPromptBtn) {
+        copyPromptBtn.addEventListener('click', () => {
+            const codeText = document.getElementById('modalPromptCode').textContent;
+            navigator.clipboard.writeText(codeText).then(() => {
+                copyPromptBtn.textContent = '✅ Copied!';
+                setTimeout(() => copyPromptBtn.textContent = '📋 Copy Prompt', 2000);
             });
         });
     }
