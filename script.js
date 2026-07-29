@@ -14,7 +14,8 @@ import {
 import { 
     getFirestore, 
     collection, 
-    getDocs 
+    getDocs,
+    addDoc
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // Your web app's Firebase configuration
@@ -43,7 +44,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const openLoginBtn = document.getElementById('openLoginBtn');
     const openSignupBtn = document.getElementById('openSignupBtn');
     const closeModalBtn = document.getElementById('closeModalBtn');
-    const toggleAuthMode = document.getElementById('toggleAuthMode');
     
     const modalTitle = document.getElementById('modalTitle');
     const modalSubtitle = document.getElementById('modalSubtitle');
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --------------------------------------------------------------------------
-    // 2. FIREBASE GOOGLE SIGN-IN
+    // 2. FIREBASE GOOGLE SIGN-IN & AUTH
     // --------------------------------------------------------------------------
     if(googleAuthBtn) {
         googleAuthBtn.addEventListener('click', async () => {
@@ -121,9 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --------------------------------------------------------------------------
-    // 3. FIREBASE EMAIL/PASSWORD AUTHENTICATION
-    // --------------------------------------------------------------------------
     if(authForm) {
         authForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -144,36 +141,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 closeModal();
             } catch (error) {
-                if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-                    if(authErrorMsg) authErrorMsg.textContent = "Invalid email or password.";
-                } else if (error.code === 'auth/email-already-in-use') {
-                    if(authErrorMsg) authErrorMsg.textContent = "This email is already registered.";
-                } else if (error.code === 'auth/weak-password') {
-                    if(authErrorMsg) authErrorMsg.textContent = "Password should be at least 6 characters.";
-                } else {
-                    if(authErrorMsg) authErrorMsg.textContent = error.message;
-                }
+                if(authErrorMsg) authErrorMsg.textContent = "Authentication Error: " + error.message;
             }
         });
     }
 
     // --------------------------------------------------------------------------
-    // 4. AUTH STATE OBSERVER
+    // 3. AUTH STATE OBSERVER & ADMIN TRIGGER
     // --------------------------------------------------------------------------
     onAuthStateChanged(auth, (user) => {
         if (user && navAuthArea) {
             const displayName = user.displayName || user.email.split('@')[0];
             navAuthArea.innerHTML = `
-                <div class="user-badge-nav">
-                    <span class="user-name-display">👋 ${displayName}</span>
-                    <button class="btn-logout" id="logoutBtn">Logout</button>
+                <div class="user-badge-nav" style="display:flex; align-items:center; gap:8px;">
+                    <span class="user-name-display" style="color:#38bdf8; font-weight:600; font-size:0.9rem;">👋 ${displayName}</span>
+                    <button class="btn-secondary" id="openAdminBtn" style="padding: 6px 12px; font-size: 0.8rem; border-color: var(--primary-blue);">+ Add Prompt</button>
+                    <button class="btn-logout" id="logoutBtn" style="padding: 6px 12px; font-size: 0.8rem; background:rgba(239,68,68,0.2); color:#ef4444; border:1px solid rgba(239,68,68,0.4); border-radius:4px; cursor:pointer;">Logout</button>
                 </div>
             `;
             const logoutBtn = document.getElementById('logoutBtn');
-            if(logoutBtn) {
-                logoutBtn.addEventListener('click', () => {
-                    signOut(auth);
-                });
+            if(logoutBtn) logoutBtn.addEventListener('click', () => signOut(auth));
+
+            const openAdminBtn = document.getElementById('openAdminBtn');
+            const adminModal = document.getElementById('adminModal');
+            if(openAdminBtn && adminModal) {
+                openAdminBtn.addEventListener('click', () => adminModal.classList.add('active'));
             }
         } else if(navAuthArea) {
             navAuthArea.innerHTML = `
@@ -188,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --------------------------------------------------------------------------
-    // 5. FETCH DYNAMIC PROMPTS FROM FIRESTORE
+    // 4. FETCH DYNAMIC PROMPTS FROM FIRESTORE
     // --------------------------------------------------------------------------
     async function loadPromptsFromFirestore() {
         const promptsGrid = document.querySelector('.prompts-grid');
@@ -216,7 +208,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                             <div class="card-bottom">
                                 <span class="price-tag">$${p.price}</span>
-                                <button class="btn-secondary view-prompt-btn" data-title="${p.title}" data-desc="${p.description}">View Prompt</button>
+                                <button class="btn-secondary view-prompt-btn" 
+                                    data-title="${p.title}" 
+                                    data-desc="${p.description}" 
+                                    data-payurl="${p.payUrl || ''}">View Prompt</button>
                             </div>
                         </div>
                     `;
@@ -233,7 +228,53 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPromptsFromFirestore();
 
     // --------------------------------------------------------------------------
-    // 6. SEARCH & CATEGORY FILTER FOR PROMPT CARDS
+    // 5. ADMIN ADD PROMPT FORM SUBMIT (WITH REAL PAYMENT URL)
+    // --------------------------------------------------------------------------
+    const adminPromptForm = document.getElementById('adminPromptForm');
+    const adminModal = document.getElementById('adminModal');
+    const closeAdminModalBtn = document.getElementById('closeAdminModalBtn');
+    const adminStatusMsg = document.getElementById('adminStatusMsg');
+
+    if(closeAdminModalBtn && adminModal) {
+        closeAdminModalBtn.addEventListener('click', () => adminModal.classList.remove('active'));
+    }
+
+    if(adminPromptForm) {
+        adminPromptForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            adminStatusMsg.textContent = 'Publishing prompt to database...';
+
+            const payUrlInput = document.getElementById('adminPayUrl');
+            const payUrlValue = payUrlInput ? payUrlInput.value : '';
+
+            const newPrompt = {
+                title: document.getElementById('adminTitle').value,
+                category: document.getElementById('adminCategory').value,
+                description: document.getElementById('adminDesc').value,
+                promptCode: document.getElementById('adminPromptCode').value, 
+                price: parseFloat(document.getElementById('adminPrice').value) || 9.99,
+                uses: document.getElementById('adminUses').value || '1.0k',
+                payUrl: payUrlValue, // The actual Stripe/LemonSqueezy link
+                rating: 5.0
+            };
+
+            try {
+                await addDoc(collection(db, "prompts"), newPrompt);
+                adminStatusMsg.textContent = '✅ Prompt Added Successfully!';
+                adminPromptForm.reset();
+                setTimeout(() => {
+                    adminModal.classList.remove('active');
+                    adminStatusMsg.textContent = '';
+                    loadPromptsFromFirestore();
+                }, 1500);
+            } catch (err) {
+                adminStatusMsg.textContent = '❌ Error adding prompt: ' + err.message;
+            }
+        });
+    }
+
+    // --------------------------------------------------------------------------
+    // 6. SEARCH & CATEGORY FILTER
     // --------------------------------------------------------------------------
     const searchInput = document.getElementById('searchInput');
 
@@ -259,7 +300,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Popular Tags Filter Click Event
     const tagButtons = document.querySelectorAll('.popular-tags .tag, .hero-tags .tag');
     tagButtons.forEach(tag => {
         tag.addEventListener('click', (e) => {
@@ -270,13 +310,16 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector('#prompts').scrollIntoView({ behavior: 'smooth' });
         });
     });
-// --------------------------------------------------------------------------
-    // 7. VIEW PROMPT MODAL & COPY TO CLIPBOARD
+
+    // --------------------------------------------------------------------------
+    // 7. VIEW PROMPT MODAL & SECURE REDIRECT LOGIC
     // --------------------------------------------------------------------------
     const promptDetailModal = document.getElementById('promptDetailModal');
     const closePromptModalBtn = document.getElementById('closePromptModalBtn');
     const closePromptModalAction = document.getElementById('closePromptModalAction');
     const copyPromptBtn = document.getElementById('copyPromptBtn');
+
+    let currentPaymentUrl = "";
 
     function attachViewPromptEvents() {
         const viewBtns = document.querySelectorAll('.view-prompt-btn');
@@ -289,26 +332,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 const category = card.querySelector('.badge-platform').textContent;
                 const price = card.querySelector('.price-tag').textContent;
 
+                // Load real payment URL if admin provided one
+                currentPaymentUrl = btn.getAttribute('data-payurl') || "";
+
                 document.getElementById('modalPromptTitle').textContent = title;
                 document.getElementById('modalPromptDesc').textContent = desc;
                 document.getElementById('modalPromptCategory').textContent = category;
                 document.getElementById('modalPromptPrice').textContent = price;
-                document.getElementById('modalPromptCode').textContent = `[PROMPT INSTRUCTIONS]\nAct as a senior expert in ${category}.\nTask: ${desc}\n\nConstraints: Provide step-by-step professional output with zero technical errors.`;
+
+                // HIDE THE REAL PROMPT! ONLY SHOW PREVIEW
+                document.getElementById('modalPromptCode').textContent = `[PREVIEW FORMULA]\nAct as a senior expert in ${category}.\nTask: ${desc}\n\n[🔒 Full Uncut Prompt & Technical Parameters Locked - Buy to Unlock]`;
 
                 if(promptDetailModal) promptDetailModal.classList.add('active');
             });
         });
     }
 
-    if(closePromptModalBtn) closePromptModalBtn.addEventListener('click', () => promptDetailModal.classList.remove('active'));
-    if(closePromptModalAction) closePromptModalAction.addEventListener('click', () => promptDetailModal.classList.remove('active'));
+    if(closePromptModalBtn && promptDetailModal) {
+        closePromptModalBtn.addEventListener('click', () => promptDetailModal.classList.remove('active'));
+    }
 
-    if(promptDetailModal) {
-        promptDetailModal.addEventListener('click', (e) => {
-            if (e.target === promptDetailModal) promptDetailModal.classList.remove('active');
+    // When clicking "Buy / Unlock Prompt", redirect to Stripe/LemonSqueezy!
+    if(closePromptModalAction) {
+        closePromptModalAction.addEventListener('click', () => {
+            if (currentPaymentUrl && currentPaymentUrl.trim() !== "") {
+                window.location.href = currentPaymentUrl;
+            } else {
+                alert("⚡ Redirecting to Checkout Gateway...\n\n(Admin Note: Please update this prompt in Database with a valid Stripe/LemonSqueezy Checkout Link)");
+            }
         });
     }
 
+    // Copying the preview
     if(copyPromptBtn) {
         copyPromptBtn.addEventListener('click', () => {
             const codeText = document.getElementById('modalPromptCode').textContent;
@@ -320,7 +375,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --------------------------------------------------------------------------
-    // 8. WISHLIST TOGGLE
+    // 8. FOOTER LEGAL & POLICY MODALS
+    // --------------------------------------------------------------------------
+    const infoModal = document.getElementById('infoModal');
+    const closeInfoModalBtn = document.getElementById('closeInfoModalBtn');
+    const infoTitle = document.getElementById('infoModalTitle');
+    const infoContent = document.getElementById('infoModalContent');
+
+    if(closeInfoModalBtn && infoModal) {
+        closeInfoModalBtn.addEventListener('click', () => infoModal.classList.remove('active'));
+    }
+
+    const footerLinks = document.querySelectorAll('footer a');
+    footerLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            const href = link.getAttribute('href');
+            if(href && href.startsWith('#')) {
+                e.preventDefault();
+                const linkText = link.textContent.trim();
+                infoTitle.textContent = linkText;
+                
+                if(linkText.includes('Privacy')) {
+                    infoContent.innerHTML = `<p>We respect your privacy. Your account information and purchase history are encrypted and will never be shared with third parties.</p>`;
+                } else if(linkText.includes('Terms')) {
+                    infoContent.innerHTML = `<p>By purchasing prompts on ProAIPrompts, you gain full commercial rights to use the generated outputs for personal and client projects.</p>`;
+                } else if(linkText.includes('Contact')) {
+                    infoContent.innerHTML = `<p>Need help with your prompt order? Reach out to our 24/7 AI Engineering Support Team at <strong>support@proaiprompts.com</strong></p>`;
+                } else {
+                    infoContent.innerHTML = `<p>Welcome to ProAIPrompts — The Premier AI Prompt Marketplace designed for high-performing creators and developers.</p>`;
+                }
+                
+                if(infoModal) infoModal.classList.add('active');
+            }
+        });
+    });
+
+    // --------------------------------------------------------------------------
+    // 9. WISHLIST TOGGLE & FAQ ACCORDION
     // --------------------------------------------------------------------------
     function attachWishlistEvents() {
         const wishlistBtns = document.querySelectorAll('.wishlist-btn');
@@ -328,8 +419,6 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', () => {
                 if (btn.textContent === '🤍') {
                     btn.textContent = '❤️';
-                    btn.style.transform = 'scale(1.3)';
-                    setTimeout(() => btn.style.transform = 'scale(1)', 200);
                 } else {
                     btn.textContent = '🤍';
                 }
@@ -337,9 +426,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --------------------------------------------------------------------------
-    // 9. FAQ ACCORDION TOGGLE
-    // --------------------------------------------------------------------------
     const faqItems = document.querySelectorAll('.faq-item');
     faqItems.forEach(item => {
         const question = item.querySelector('h3');
@@ -351,5 +437,4 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    console.log("ProAIPrompts: Fully Optimized Dynamic Engine Active!");
 });
