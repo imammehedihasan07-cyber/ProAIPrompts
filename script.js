@@ -11,6 +11,12 @@ import {
     onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+import { 
+    getFirestore, 
+    collection, 
+    getDocs 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
 // Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyA6dGNa1ioiHA5FxbFfMDOb-9fBuHVv38c",
@@ -22,9 +28,10 @@ const firebaseConfig = {
   measurementId: "G-YGMRD3T2SF"
 };
 
-// Initialize Firebase
+// Initialize Firebase & Firestore
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -123,13 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (isSignUpMode) {
-                // Register User
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 if (name) {
                     await updateProfile(userCredential.user, { displayName: name });
                 }
             } else {
-                // Login User
                 await signInWithEmailAndPassword(auth, email, password);
             }
             closeModal();
@@ -147,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --------------------------------------------------------------------------
-    // 4. AUTH STATE OBSERVER (NAVBAR USER STATE)
+    // 4. AUTH STATE OBSERVER
     // --------------------------------------------------------------------------
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -172,16 +177,60 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --------------------------------------------------------------------------
-    // 5. REAL-TIME SEARCH FILTER FOR PROMPT CARDS
+    // 5. FETCH DYNAMIC PROMPTS FROM FIRESTORE
+    // --------------------------------------------------------------------------
+    async function loadPromptsFromFirestore() {
+        const promptsGrid = document.querySelector('.prompts-grid');
+        if (!promptsGrid) return;
+
+        try {
+            const querySnapshot = await getDocs(collection(db, "prompts"));
+            if (!querySnapshot.empty) {
+                promptsGrid.innerHTML = ''; // Clear hardcoded HTML cards
+                querySnapshot.forEach((doc) => {
+                    const p = doc.data();
+                    const platformClass = (p.category || 'chatgpt').toLowerCase().replace(/\s+/g, '');
+                    
+                    const cardHTML = `
+                        <div class="prompt-card glass-card">
+                            <div class="card-top">
+                                <span class="badge-platform ${platformClass}">${p.category || 'ChatGPT'}</span>
+                                <button class="wishlist-btn">🤍</button>
+                            </div>
+                            <h3>${p.title}</h3>
+                            <p>${p.description}</p>
+                            <div class="card-meta">
+                                <span>⭐ ${p.rating || '5.0'}</span>
+                                <span>📥 ${p.uses || '0'} Uses</span>
+                            </div>
+                            <div class="card-bottom">
+                                <span class="price-tag">$${p.price}</span>
+                                <a href="#" class="btn-secondary">View Prompt</a>
+                            </div>
+                        </div>
+                    `;
+                    promptsGrid.insertAdjacentHTML('beforeend', cardHTML);
+                });
+                attachWishlistEvents();
+            }
+        } catch (error) {
+            console.error("Error loading prompts from Firestore:", error);
+        }
+    }
+
+    loadPromptsFromFirestore();
+
+    // --------------------------------------------------------------------------
+    // 6. REAL-TIME SEARCH FILTER FOR PROMPT CARDS
     // --------------------------------------------------------------------------
     const searchInput = document.getElementById('searchInput');
-    const promptCards = document.querySelectorAll('.prompt-card');
 
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.prompt-card');
 
-            promptCards.forEach(card => {
+            cards.forEach(card => {
                 const title = card.querySelector('h3').textContent.toLowerCase();
                 const description = card.querySelector('p').textContent.toLowerCase();
                 const badge = card.querySelector('.badge-platform').textContent.toLowerCase();
@@ -196,23 +245,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --------------------------------------------------------------------------
-    // 6. WISHLIST TOGGLE
+    // 7. WISHLIST TOGGLE
     // --------------------------------------------------------------------------
-    const wishlistBtns = document.querySelectorAll('.wishlist-btn');
-    wishlistBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (btn.textContent === '🤍') {
-                btn.textContent = '❤️';
-                btn.style.transform = 'scale(1.3)';
-                setTimeout(() => btn.style.transform = 'scale(1)', 200);
-            } else {
-                btn.textContent = '🤍';
-            }
+    function attachWishlistEvents() {
+        const wishlistBtns = document.querySelectorAll('.wishlist-btn');
+        wishlistBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.textContent === '🤍') {
+                    btn.textContent = '❤️';
+                    btn.style.transform = 'scale(1.3)';
+                    setTimeout(() => btn.style.transform = 'scale(1)', 200);
+                } else {
+                    btn.textContent = '🤍';
+                }
+            });
         });
-    });
+    }
+    attachWishlistEvents();
 
     // --------------------------------------------------------------------------
-    // 7. FAQ ACCORDION TOGGLE
+    // 8. FAQ ACCORDION TOGGLE
     // --------------------------------------------------------------------------
     const faqItems = document.querySelectorAll('.faq-item');
     faqItems.forEach(item => {
@@ -223,22 +275,5 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --------------------------------------------------------------------------
-    // 8. SMOOTH SCROLLING FOR NAVBAR LINKS
-    // --------------------------------------------------------------------------
-    const navLinks = document.querySelectorAll('.nav-links a, .hero-cta-buttons a');
-    navLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-            const href = link.getAttribute('href');
-            if (href.startsWith('#') && href.length > 1) {
-                e.preventDefault();
-                const targetSection = document.querySelector(href);
-                if (targetSection) {
-                    targetSection.scrollIntoView({ behavior: 'smooth' });
-                }
-            }
-        });
-    });
-
-    console.log("ProAIPrompts V2: Firebase Auth & Modal Ready!");
+    console.log("ProAIPrompts V2: Firestore Dynamic Engine Ready!");
 });
