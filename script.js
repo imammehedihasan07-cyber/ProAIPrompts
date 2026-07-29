@@ -60,27 +60,27 @@ document.addEventListener('DOMContentLoaded', () => {
     function openModal(signUp = false) {
         isSignUpMode = signUp;
         updateModalUI();
-        authErrorMsg.textContent = '';
-        authModal.classList.add('active');
+        if(authErrorMsg) authErrorMsg.textContent = '';
+        if(authModal) authModal.classList.add('active');
     }
 
     function closeModal() {
-        authModal.classList.remove('active');
+        if(authModal) authModal.classList.remove('active');
     }
 
     function updateModalUI() {
         if (isSignUpMode) {
-            modalTitle.textContent = "Create Account";
-            modalSubtitle.textContent = "Get instant access to 10,000+ premium AI prompts";
-            nameGroup.style.display = 'block';
-            authSubmitBtn.textContent = "Sign Up";
-            toggleAuthText.innerHTML = `Already have an account? <a href="#" id="toggleAuthMode">Log In</a>`;
+            if(modalTitle) modalTitle.textContent = "Create Account";
+            if(modalSubtitle) modalSubtitle.textContent = "Get instant access to 10,000+ premium AI prompts";
+            if(nameGroup) nameGroup.style.display = 'block';
+            if(authSubmitBtn) authSubmitBtn.textContent = "Sign Up";
+            if(toggleAuthText) toggleAuthText.innerHTML = `Already have an account? <a href="#" id="toggleAuthMode">Log In</a>`;
         } else {
-            modalTitle.textContent = "Welcome Back";
-            modalSubtitle.textContent = "Sign in to access your saved prompts and dashboard";
-            nameGroup.style.display = 'none';
-            authSubmitBtn.textContent = "Log In";
-            toggleAuthText.innerHTML = `Don't have an account? <a href="#" id="toggleAuthMode">Sign Up</a>`;
+            if(modalTitle) modalTitle.textContent = "Welcome Back";
+            if(modalSubtitle) modalSubtitle.textContent = "Sign in to access your saved prompts and dashboard";
+            if(nameGroup) nameGroup.style.display = 'none';
+            if(authSubmitBtn) authSubmitBtn.textContent = "Log In";
+            if(toggleAuthText) toggleAuthText.innerHTML = `Don't have an account? <a href="#" id="toggleAuthMode">Sign Up</a>`;
         }
         attachToggleListener();
     }
@@ -100,62 +100,68 @@ document.addEventListener('DOMContentLoaded', () => {
     if (openSignupBtn) openSignupBtn.addEventListener('click', () => openModal(true));
     if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
 
-    authModal.addEventListener('click', (e) => {
-        if (e.target === authModal) closeModal();
-    });
+    if(authModal) {
+        authModal.addEventListener('click', (e) => {
+            if (e.target === authModal) closeModal();
+        });
+    }
 
     // --------------------------------------------------------------------------
     // 2. FIREBASE GOOGLE SIGN-IN
     // --------------------------------------------------------------------------
-    googleAuthBtn.addEventListener('click', async () => {
-        try {
-            authErrorMsg.textContent = '';
-            await signInWithPopup(auth, googleProvider);
-            closeModal();
-        } catch (error) {
-            authErrorMsg.textContent = error.message;
-        }
-    });
+    if(googleAuthBtn) {
+        googleAuthBtn.addEventListener('click', async () => {
+            try {
+                if(authErrorMsg) authErrorMsg.textContent = '';
+                await signInWithPopup(auth, googleProvider);
+                closeModal();
+            } catch (error) {
+                if(authErrorMsg) authErrorMsg.textContent = error.message;
+            }
+        });
+    }
 
     // --------------------------------------------------------------------------
     // 3. FIREBASE EMAIL/PASSWORD AUTHENTICATION
     // --------------------------------------------------------------------------
-    authForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        authErrorMsg.textContent = '';
+    if(authForm) {
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if(authErrorMsg) authErrorMsg.textContent = '';
 
-        const email = document.getElementById('authEmail').value;
-        const password = document.getElementById('authPassword').value;
-        const name = document.getElementById('authName').value;
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+            const name = document.getElementById('authName') ? document.getElementById('authName').value : '';
 
-        try {
-            if (isSignUpMode) {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                if (name) {
-                    await updateProfile(userCredential.user, { displayName: name });
+            try {
+                if (isSignUpMode) {
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    if (name) {
+                        await updateProfile(userCredential.user, { displayName: name });
+                    }
+                } else {
+                    await signInWithEmailAndPassword(auth, email, password);
                 }
-            } else {
-                await signInWithEmailAndPassword(auth, email, password);
+                closeModal();
+            } catch (error) {
+                if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+                    if(authErrorMsg) authErrorMsg.textContent = "Invalid email or password.";
+                } else if (error.code === 'auth/email-already-in-use') {
+                    if(authErrorMsg) authErrorMsg.textContent = "This email is already registered.";
+                } else if (error.code === 'auth/weak-password') {
+                    if(authErrorMsg) authErrorMsg.textContent = "Password should be at least 6 characters.";
+                } else {
+                    if(authErrorMsg) authErrorMsg.textContent = error.message;
+                }
             }
-            closeModal();
-        } catch (error) {
-            if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
-                authErrorMsg.textContent = "Invalid email or password.";
-            } else if (error.code === 'auth/email-already-in-use') {
-                authErrorMsg.textContent = "This email is already registered.";
-            } else if (error.code === 'auth/weak-password') {
-                authErrorMsg.textContent = "Password should be at least 6 characters.";
-            } else {
-                authErrorMsg.textContent = error.message;
-            }
-        }
-    });
+        });
+    }
 
     // --------------------------------------------------------------------------
     // 4. AUTH STATE OBSERVER
     // --------------------------------------------------------------------------
     onAuthStateChanged(auth, (user) => {
-        if (user) {
+        if (user && navAuthArea) {
             const displayName = user.displayName || user.email.split('@')[0];
             navAuthArea.innerHTML = `
                 <div class="user-badge-nav">
@@ -163,16 +169,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="btn-logout" id="logoutBtn">Logout</button>
                 </div>
             `;
-            document.getElementById('logoutBtn').addEventListener('click', () => {
-                signOut(auth);
-            });
-        } else {
+            const logoutBtn = document.getElementById('logoutBtn');
+            if(logoutBtn) {
+                logoutBtn.addEventListener('click', () => {
+                    signOut(auth);
+                });
+            }
+        } else if(navAuthArea) {
             navAuthArea.innerHTML = `
                 <button class="btn-login" id="openLoginBtn">Log In</button>
                 <button class="btn-primary" id="openSignupBtn">Sign Up</button>
             `;
-            document.getElementById('openLoginBtn').addEventListener('click', () => openModal(false));
-            document.getElementById('openSignupBtn').addEventListener('click', () => openModal(true));
+            const loginBtn = document.getElementById('openLoginBtn');
+            const signupBtn = document.getElementById('openSignupBtn');
+            if(loginBtn) loginBtn.addEventListener('click', () => openModal(false));
+            if(signupBtn) signupBtn.addEventListener('click', () => openModal(true));
         }
     });
 
@@ -186,13 +197,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const querySnapshot = await getDocs(collection(db, "prompts"));
             if (!querySnapshot.empty) {
-                promptsGrid.innerHTML = ''; // Clear hardcoded HTML cards
+                promptsGrid.innerHTML = '';
                 querySnapshot.forEach((doc) => {
                     const p = doc.data();
                     const platformClass = (p.category || 'chatgpt').toLowerCase().replace(/\s+/g, '');
                     
                     const cardHTML = `
-                        <div class="prompt-card glass-card">
+                        <div class="prompt-card glass-card" data-category="${(p.category || '').toLowerCase()}">
                             <div class="card-top">
                                 <span class="badge-platform ${platformClass}">${p.category || 'ChatGPT'}</span>
                                 <button class="wishlist-btn">🤍</button>
@@ -205,13 +216,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                             <div class="card-bottom">
                                 <span class="price-tag">$${p.price}</span>
-                                <a href="#" class="btn-secondary">View Prompt</a>
+                                <button class="btn-secondary view-prompt-btn" data-title="${p.title}" data-desc="${p.description}">View Prompt</button>
                             </div>
                         </div>
                     `;
                     promptsGrid.insertAdjacentHTML('beforeend', cardHTML);
                 });
                 attachWishlistEvents();
+                attachViewPromptEvents();
             }
         } catch (error) {
             console.error("Error loading prompts from Firestore:", error);
@@ -221,31 +233,62 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPromptsFromFirestore();
 
     // --------------------------------------------------------------------------
-    // 6. REAL-TIME SEARCH FILTER FOR PROMPT CARDS
+    // 6. SEARCH & CATEGORY FILTER FOR PROMPT CARDS
     // --------------------------------------------------------------------------
     const searchInput = document.getElementById('searchInput');
 
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase().trim();
-            const cards = document.querySelectorAll('.prompt-card');
+            filterPrompts(searchTerm);
+        });
+    }
 
-            cards.forEach(card => {
-                const title = card.querySelector('h3').textContent.toLowerCase();
-                const description = card.querySelector('p').textContent.toLowerCase();
-                const badge = card.querySelector('.badge-platform').textContent.toLowerCase();
+    function filterPrompts(term = '') {
+        const cards = document.querySelectorAll('.prompt-card');
+        cards.forEach(card => {
+            const title = card.querySelector('h3').textContent.toLowerCase();
+            const description = card.querySelector('p').textContent.toLowerCase();
+            const badge = card.querySelector('.badge-platform').textContent.toLowerCase();
 
-                if (title.includes(searchTerm) || description.includes(searchTerm) || badge.includes(searchTerm)) {
-                    card.style.display = 'flex';
-                } else {
-                    card.style.display = 'none';
-                }
+            if (title.includes(term) || description.includes(term) || badge.includes(term)) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    // Popular Tags Filter Click Event
+    const tagButtons = document.querySelectorAll('.popular-tags .tag, .hero-tags .tag');
+    tagButtons.forEach(tag => {
+        tag.addEventListener('click', (e) => {
+            e.preventDefault();
+            const tagText = tag.textContent.trim().toLowerCase();
+            if(searchInput) searchInput.value = tagText;
+            filterPrompts(tagText);
+            document.querySelector('#prompts').scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+
+    // --------------------------------------------------------------------------
+    // 7. VIEW PROMPT MODAL & COPY TO CLIPBOARD
+    // --------------------------------------------------------------------------
+    function attachViewPromptEvents() {
+        const viewBtns = document.querySelectorAll('.view-prompt-btn');
+        viewBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const title = btn.getAttribute('data-title');
+                const desc = btn.getAttribute('data-desc');
+                
+                alert(`📌 Prompt Title: ${title}\n\n📝 Description: ${desc}\n\n💡 Full Prompt Code Access: Enabled for registered members!`);
             });
         });
     }
 
     // --------------------------------------------------------------------------
-    // 7. WISHLIST TOGGLE
+    // 8. WISHLIST TOGGLE
     // --------------------------------------------------------------------------
     function attachWishlistEvents() {
         const wishlistBtns = document.querySelectorAll('.wishlist-btn');
@@ -261,19 +304,20 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-    attachWishlistEvents();
 
     // --------------------------------------------------------------------------
-    // 8. FAQ ACCORDION TOGGLE
+    // 9. FAQ ACCORDION TOGGLE
     // --------------------------------------------------------------------------
     const faqItems = document.querySelectorAll('.faq-item');
     faqItems.forEach(item => {
         const question = item.querySelector('h3');
-        question.style.cursor = 'pointer';
-        question.addEventListener('click', () => {
-            item.classList.toggle('active');
-        });
+        if(question) {
+            question.style.cursor = 'pointer';
+            question.addEventListener('click', () => {
+                item.classList.toggle('active');
+            });
+        }
     });
 
-    console.log("ProAIPrompts V2: Firestore Dynamic Engine Ready!");
+    console.log("ProAIPrompts: Fully Optimized Dynamic Engine Active!");
 });
