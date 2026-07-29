@@ -26,9 +26,9 @@
                 </ul>
             </nav>
 
-            <div class="nav-buttons">
-                <a href="#" class="btn-login">Log In</a>
-                <a href="#" class="btn-primary">Sign Up</a>
+            <div class="nav-buttons" id="navAuthArea">
+                <button class="btn-login" id="openLoginBtn">Log In</button>
+                <button class="btn-primary" id="openSignupBtn">Sign Up</button>
             </div>
         </div>
     </header>
@@ -313,7 +313,7 @@
         </div>
     </section>
 
-    <!-- 7. Why Choose Us Section (নতুন) -->
+    <!-- 7. Why Choose Us Section -->
     <section class="why-us-section" id="why-us">
         <div class="container">
             <div class="section-header">
@@ -356,7 +356,7 @@
         </div>
     </section>
 
-    <!-- 8. Testimonials Section (নতুন) -->
+    <!-- 8. Testimonials Section -->
     <section class="testimonials-section" id="testimonials">
         <div class="container">
             <div class="section-header">
@@ -398,7 +398,7 @@
         </div>
     </section>
 
-    <!-- 9. FAQ Section (নতুন) -->
+    <!-- 9. FAQ Section -->
     <section class="faq-section" id="faq">
         <div class="container">
             <div class="section-header">
@@ -423,7 +423,7 @@
         </div>
     </section>
 
-    <!-- 10. Newsletter Section (নতুন) -->
+    <!-- 10. Newsletter Section -->
     <section class="newsletter-section">
         <div class="container">
             <div class="newsletter-card glass-card">
@@ -438,7 +438,7 @@
         </div>
     </section>
 
-    <!-- 11. Footer Section (নতুন) -->
+    <!-- 11. Footer Section -->
     <footer class="footer-saas">
         <div class="container footer-grid">
             <div class="footer-brand">
@@ -482,6 +482,54 @@
         </div>
     </footer>
 
-    <script src="script.js"></script>
+    <!-- 12. GLASS POPUP AUTH MODAL -->
+    <div class="auth-modal-overlay" id="authModal">
+        <div class="auth-modal-content glass-card">
+            <button class="close-modal-btn" id="closeModalBtn">&times;</button>
+            
+            <div class="auth-header">
+                <h2 id="modalTitle">Welcome Back</h2>
+                <p id="modalSubtitle">Sign in to access your saved prompts and dashboard</p>
+            </div>
+
+            <button class="btn-google-auth" id="googleAuthBtn">
+                <svg width="20" height="20" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.1 0-5.74-2.09-6.68-4.91H1.21v3.15C3.2 21.3 7.31 24 12 24z"/>
+                    <path fill="#FBBC05" d="M5.32 14.29c-.24-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.56H1.21C.44 8.1 0 9.99 0 12s.44 3.9 1.21 5.44l4.11-3.15z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.2 2.7 1.21 6.56l4.11 3.15c.94-2.82 3.58-4.96 6.68-4.96z"/>
+                </svg>
+                Continue with Google
+            </button>
+
+            <div class="auth-divider">
+                <span>or continue with email</span>
+            </div>
+
+            <form id="authForm">
+                <div class="form-group" id="nameGroup" style="display: none;">
+                    <label>Full Name</label>
+                    <input type="text" id="authName" placeholder="John Doe">
+                </div>
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <input type="email" id="authEmail" placeholder="name@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="authPassword" placeholder="••••••••" required>
+                </div>
+                <p class="auth-error-msg" id="authErrorMsg"></p>
+                <button type="submit" class="btn-primary btn-block" id="authSubmitBtn">Log In</button>
+            </form>
+
+            <div class="auth-footer">
+                <p id="toggleAuthText">Don't have an account? <a href="#" id="toggleAuthMode">Sign Up</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Import (Module JS) -->
+    <script type="module" src="script.js"></script>
 </body>
 </html>
